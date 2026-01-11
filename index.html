@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DocCompare - Live Document Comparison</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        /* ========== THEMES ========== */
+        [data-theme="dark"] {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #111118;
+            --bg-tertiary: #1a1a24;
+            --bg-editor: #0d0d12;
+            --border: #2a2a3a;
+            --border-active: #3a3a5a;
+            --text: #e0e0e8;
+            --text-dim: #7878a0;
+            --text-line: #4a4a6a;
+            --accent-1: #00e5c0;
+            --accent-2: #8b5cf6;
+            --add-bg: rgba(0, 229, 192, 0.12);
+            --add-text: #00e5c0;
+            --del-bg: rgba(239, 68, 68, 0.12);
+            --del-text: #f87171;
+            --change-bg: rgba(139, 92, 246, 0.12);
+        }
+
+        [data-theme="light"] {
+            --bg-primary: #f8f9fa;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f0f0f4;
+            --bg-editor: #ffffff;
+            --border: #e0e0e8;
+            --border-active: #c0c0d0;
+            --text: #1a1a2e;
+            --text-dim: #666680;
+            --text-line: #a0a0b0;
+            --accent-1: #0891b2;
+            --accent-2: #7c3aed;
+            --add-bg: rgba(8, 145, 178, 0.1);
+            --add-text: #0891b2;
+            --del-bg: rgba(220, 38, 38, 0.1);
+            --del-text: #dc2626;
+            --change-bg: rgba(124, 58, 237, 0.1);
+        }
+
+        [data-theme="ocean"] {
+            --bg-primary: #0a1628;
+            --bg-secondary: #0f1e32;
+            --bg-tertiary: #162840;
+            --bg-editor: #0c1420;
+            --border: #1e3a5f;
+            --border-active: #2a4a70;
+            --text: #d0e8ff;
+            --text-dim: #6a9fd0;
+            --text-line: #3a6090;
+            --accent-1: #00c8ff;
+            --accent-2: #0070b0;
+            --add-bg: rgba(0, 200, 255, 0.12);
+            --add-text: #00c8ff;
+            --del-bg: rgba(255, 100, 100, 0.12);
+            --del-text: #ff8080;
+            --change-bg: rgba(0, 112, 176, 0.15);
+        }
+
+        [data-theme="forest"] {
+            --bg-primary: #0a140a;
+            --bg-secondary: #0f1e0f;
+            --bg-tertiary: #162816;
+            --bg-editor: #0c140c;
+            --border: #1e3a1e;
+            --border-active: #2a5a2a;
+            --text: #d0f0d0;
+            --text-dim: #6ab06a;
+            --text-line: #3a703a;
+            --accent-1: #4ade80;
+            --accent-2: #16a34a;
+            --add-bg: rgba(74, 222, 128, 0.12);
+            --add-text: #4ade80;
+            --del-bg: rgba(248, 113, 113, 0.12);
+            --del-text: #fca5a5;
+            --change-bg: rgba(22, 163, 74, 0.15);
+        }
+
+        [data-theme="sunset"] {
+            --bg-primary: #140a0a;
+            --bg-secondary: #1e0f0f;
+            --bg-tertiary: #2a1616;
+            --bg-editor: #120808;
+            --border: #3a1e1e;
+            --border-active: #5a2a2a;
+            --text: #ffe8e0;
+            --text-dim: #c08070;
+            --text-line: #805050;
+            --accent-1: #fb923c;
+            --accent-2: #f43f5e;
+            --add-bg: rgba(251, 146, 60, 0.12);
+            --add-text: #fb923c;
+            --del-bg: rgba(244, 63, 94, 0.12);
+            --del-text: #fb7185;
+            --change-bg: rgba(244, 63, 94, 0.1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1.5rem;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .logo {
+            font-size: 1.4rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        /* Theme buttons */
+        .themes {
+            display: flex;
+            gap: 0.4rem;
+        }
+
+        .theme-btn {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .theme-btn:hover { transform: scale(1.15); }
+        .theme-btn.active { border-color: var(--accent-1); box-shadow: 0 0 8px var(--accent-1); }
+
+        .theme-btn[data-theme="dark"] { background: linear-gradient(135deg, #0a0a0f 50%, #8b5cf6 50%); }
+        .theme-btn[data-theme="light"] { background: linear-gradient(135deg, #f8f9fa 50%, #7c3aed 50%); }
+        .theme-btn[data-theme="ocean"] { background: linear-gradient(135deg, #0a1628 50%, #00c8ff 50%); }
+        .theme-btn[data-theme="forest"] { background: linear-gradient(135deg, #0a140a 50%, #4ade80 50%); }
+        .theme-btn[data-theme="sunset"] { background: linear-gradient(135deg, #140a0a 50%, #fb923c 50%); }
+
+        /* Toolbar */
+        .toolbar {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem 1.5rem;
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .toolbar-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .toolbar-sep {
+            width: 1px;
+            height: 24px;
+            background: var(--border);
+            margin: 0 0.5rem;
+        }
+
+        .tool-btn {
+            padding: 0.4rem 0.75rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-dim);
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        .tool-btn:hover { border-color: var(--accent-1); color: var(--text); }
+
+        .tool-btn.primary {
+            background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+            border: none;
+            color: #000;
+            font-weight: 500;
+        }
+
+        .tool-btn.primary:hover { opacity: 0.9; }
+
+        .api-input {
+            padding: 0.4rem 0.6rem;
+            background: var(--bg-editor);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.75rem;
+            width: 180px;
+        }
+
+        .api-input:focus { outline: none; border-color: var(--accent-1); }
+
+        .status {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+        }
+
+        .status.ok { background: rgba(0, 229, 192, 0.15); color: var(--accent-1); }
+        .status.err { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+
+        /* Stats */
+        .stats {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.8rem;
+            color: var(--text-dim);
+        }
+
+        .stat-val { font-weight: 600; color: var(--text); margin-left: 0.25rem; }
+        .stat-val.add { color: var(--add-text); }
+        .stat-val.del { color: var(--del-text); }
+
+        /* Main Editor Area */
+        .main {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .editor-pane {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        .editor-pane:last-child { border-right: none; }
+
+        .pane-header {
+            padding: 0.5rem 1rem;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            font-size: 0.85rem;
+            font-weight: 500;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .pane-header .title {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .pane-header.left { border-left: 3px solid var(--accent-1); }
+        .pane-header.right { border-left: 3px solid var(--accent-2); }
+
+        .pane-actions {
+            display: flex;
+            gap: 0.4rem;
+        }
+
+        .pane-btn {
+            padding: 0.25rem 0.5rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-dim);
+            font-size: 0.7rem;
+            cursor: pointer;
+        }
+
+        .pane-btn:hover { color: var(--text); border-color: var(--accent-1); }
+
+        /* Editor with line numbers */
+        .editor-container {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+            background: var(--bg-editor);
+            position: relative;
+        }
+
+        .line-numbers {
+            width: 45px;
+            padding: 0.5rem 0;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            text-align: right;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.8rem;
+            color: var(--text-line);
+            user-select: none;
+            overflow: hidden;
+            flex-shrink: 0;
+            overflow-y: auto;
+        }
+
+        .line-numbers::-webkit-scrollbar {
+            display: none;
+        }
+
+        .line-num {
+            padding: 0 0.5rem 0 0.25rem;
+            line-height: 1.5rem;
+            height: 1.5rem;
+        }
+
+        .line-num.highlight { 
+            background: var(--change-bg); 
+            color: var(--text);
+            border-right: 2px solid var(--accent-2);
+        }
+
+        .editor-wrapper {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .editor-scroll {
+            position: absolute;
+            inset: 0;
+            overflow: auto;
+        }
+
+        /* Hidden textarea for input */
+        .editor-input {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            padding: 0.5rem 0.75rem;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.85rem;
+            line-height: 1.5rem;
+            background: transparent;
+            color: transparent;
+            caret-color: var(--text);
+            border: none;
+            outline: none;
+            resize: none;
+            z-index: 2;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        /* Visible diff display */
+        .editor-display {
+            position: absolute;
+            inset: 0;
+            padding: 0.5rem 0.75rem;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.85rem;
+            line-height: 1.5rem;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            pointer-events: none;
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        .editor-input::placeholder {
+            color: var(--text-dim);
+            opacity: 0.5;
+        }
+
+        .diff-line {
+            min-height: 1.5rem;
+            display: block;
+        }
+
+        /* Character-level diff highlighting */
+        .diff-add {
+            background: var(--add-bg);
+            color: var(--add-text);
+            font-weight: 500;
+            border-radius: 2px;
+        }
+
+        .diff-del {
+            background: var(--del-bg);
+            color: var(--del-text);
+            text-decoration: line-through;
+            border-radius: 2px;
+        }
+
+        /* Center canvas/gutter */
+        .center-gutter {
+            width: 48px;
+            background: var(--bg-tertiary);
+            border-left: 1px solid var(--border);
+            border-right: 1px solid var(--border);
+            flex-shrink: 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .gutter-canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Upload overlay */
+        .upload-overlay {
+            display: none;
+            position: absolute;
+            inset: 0;
+            background: var(--bg-editor);
+            z-index: 10;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+        }
+
+        .upload-overlay.active { display: flex; }
+
+        .upload-zone {
+            padding: 3rem 4rem;
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .upload-zone:hover, .upload-zone.dragover {
+            border-color: var(--accent-1);
+            background: rgba(0, 229, 192, 0.05);
+        }
+
+        .upload-icon { font-size: 3rem; margin-bottom: 1rem; }
+        .upload-text { color: var(--text-dim); }
+        .upload-hint { font-size: 0.8rem; color: var(--text-dim); opacity: 0.6; margin-top: 0.5rem; }
+
+        .upload-close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            padding: 0.5rem 1rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-dim);
+            cursor: pointer;
+        }
+
+        /* Loading */
+        .loading {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .loading.active { display: flex; }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent-1);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .loading-text { color: var(--text); }
+
+        /* Toast */
+        .toasts {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            z-index: 1000;
+        }
+
+        .toast {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            padding: 0.6rem 1rem;
+            border-radius: 6px;
+            margin-top: 0.5rem;
+            font-size: 0.85rem;
+            animation: slideIn 0.2s ease;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        .toast.ok { border-left: 3px solid var(--accent-1); }
+        .toast.err { border-left: 3px solid #f87171; }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="logo">📄 DocCompare</div>
+        <div class="header-controls">
+            <div class="themes">
+                <button class="theme-btn active" data-theme="dark" title="Dark"></button>
+                <button class="theme-btn" data-theme="light" title="Light"></button>
+                <button class="theme-btn" data-theme="ocean" title="Ocean"></button>
+                <button class="theme-btn" data-theme="forest" title="Forest"></button>
+                <button class="theme-btn" data-theme="sunset" title="Sunset"></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+        <div class="toolbar-group">
+            <button class="tool-btn" id="upload-left">📁 Upload Left</button>
+            <button class="tool-btn" id="upload-right">📁 Upload Right</button>
+        </div>
+        <div class="toolbar-sep"></div>
+        <div class="toolbar-group">
+            <span style="font-size: 0.8rem; color: var(--text-dim);">🔑</span>
+            <input type="password" class="api-input" id="api-key" placeholder="OpenAI API Key">
+            <span class="status ok" id="api-status">Ready</span>
+        </div>
+        <div class="toolbar-sep"></div>
+        <div class="toolbar-group">
+            <button class="tool-btn" id="swap-btn">🔄 Swap</button>
+            <button class="tool-btn" id="clear-btn">🗑️ Clear</button>
+        </div>
+        <div style="flex:1;"></div>
+        <div class="stats">
+            <span>Lines: <span class="stat-val" id="stat-lines">0</span></span>
+            <span>Added: <span class="stat-val add" id="stat-add">0</span></span>
+            <span>Deleted: <span class="stat-val del" id="stat-del">0</span></span>
+        </div>
+    </div>
+
+    <!-- Main Editor Area -->
+    <div class="main">
+        <!-- Left Pane -->
+        <div class="editor-pane">
+            <div class="pane-header left">
+                <span class="title">📋 Document 1</span>
+                <div class="pane-actions">
+                    <button class="pane-btn" id="paste1">Paste</button>
+                    <button class="pane-btn" id="clear1">Clear</button>
+                </div>
+            </div>
+            <div class="editor-container">
+                <div class="line-numbers" id="lines1"></div>
+                <div class="editor-wrapper">
+                    <div class="editor-scroll" id="scroll1">
+                        <div class="editor-display" id="display1"></div>
+                        <textarea class="editor-input" id="editor1" placeholder="Type or paste text here..." spellcheck="false"></textarea>
+                    </div>
+                </div>
+                <!-- Upload Overlay -->
+                <div class="upload-overlay" id="upload1">
+                    <button class="upload-close" id="close-upload1">✕ Close</button>
+                    <div class="upload-zone" id="drop1">
+                        <div class="upload-icon">📁</div>
+                        <p class="upload-text">Drop file or click to browse</p>
+                        <p class="upload-hint">PDF, JPG, PNG, WebP</p>
+                        <input type="file" id="file1" accept=".pdf,.jpg,.jpeg,.png,.webp" hidden>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Center Gutter -->
+        <div class="center-gutter">
+            <canvas class="gutter-canvas" id="gutter"></canvas>
+        </div>
+
+        <!-- Right Pane -->
+        <div class="editor-pane">
+            <div class="pane-header right">
+                <span class="title">📋 Document 2</span>
+                <div class="pane-actions">
+                    <button class="pane-btn" id="paste2">Paste</button>
+                    <button class="pane-btn" id="clear2">Clear</button>
+                </div>
+            </div>
+            <div class="editor-container">
+                <div class="line-numbers" id="lines2"></div>
+                <div class="editor-wrapper">
+                    <div class="editor-scroll" id="scroll2">
+                        <div class="editor-display" id="display2"></div>
+                        <textarea class="editor-input" id="editor2" placeholder="Type or paste text here..." spellcheck="false"></textarea>
+                    </div>
+                </div>
+                <!-- Upload Overlay -->
+                <div class="upload-overlay" id="upload2">
+                    <button class="upload-close" id="close-upload2">✕ Close</button>
+                    <div class="upload-zone" id="drop2">
+                        <div class="upload-icon">📁</div>
+                        <p class="upload-text">Drop file or click to browse</p>
+                        <p class="upload-hint">PDF, JPG, PNG, WebP</p>
+                        <input type="file" id="file2" accept=".pdf,.jpg,.jpeg,.png,.webp" hidden>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading -->
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <div class="loading-text" id="loading-text">Processing...</div>
+    </div>
+
+    <!-- Toasts -->
+    <div class="toasts" id="toasts"></div>
+
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        const $ = id => document.getElementById(id);
+        let debounceTimer = null;
+
+        // ========== THEMES ==========
+        document.querySelectorAll('.theme-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                document.documentElement.dataset.theme = btn.dataset.theme;
+                localStorage.setItem('theme', btn.dataset.theme);
+                drawGutter();
+            });
+        });
+        
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        document.documentElement.dataset.theme = savedTheme;
+        document.querySelector(`.theme-btn[data-theme="${savedTheme}"]`)?.classList.add('active');
+
+        // ========== TOAST ==========
+        function toast(msg, type = 'ok') {
+            const t = document.createElement('div');
+            t.className = `toast ${type}`;
+            t.textContent = msg;
+            $('toasts').appendChild(t);
+            setTimeout(() => t.remove(), 3000);
+        }
+
+        // ========== GET/SET TEXT ==========
+        function getText(id) {
+            return $(id).value || '';
+        }
+
+        function setText(id, text) {
+            $(id).value = text;
+            runDiff();
+        }
+
+        // ========== CHARACTER-LEVEL DIFF ALGORITHM (like Mergely) ==========
+        
+        function esc(s) {
+            const d = document.createElement('div');
+            d.textContent = s;
+            return d.innerHTML;
+        }
+
+        // LCS for character-level diff
+        function lcsMatrix(a, b) {
+            const m = a.length, n = b.length;
+            const dp = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
+            
+            for (let i = 1; i <= m; i++) {
+                for (let j = 1; j <= n; j++) {
+                    if (a[i-1] === b[j-1]) {
+                        dp[i][j] = dp[i-1][j-1] + 1;
+                    } else {
+                        dp[i][j] = Math.max(dp[i-1][j], dp[i][j-1]);
+                    }
+                }
+            }
+            return dp;
+        }
+
+        // Character-level diff between two strings
+        function diffChars(str1, str2) {
+            const chars1 = str1.split('');
+            const chars2 = str2.split('');
+            const dp = lcsMatrix(chars1, chars2);
+            
+            const result1 = []; // For left side (deletions in red)
+            const result2 = []; // For right side (additions in blue/green)
+            
+            let i = chars1.length, j = chars2.length;
+            
+            while (i > 0 || j > 0) {
+                if (i > 0 && j > 0 && chars1[i-1] === chars2[j-1]) {
+                    result1.unshift({ c: chars1[i-1], t: 'same' });
+                    result2.unshift({ c: chars2[j-1], t: 'same' });
+                    i--; j--;
+                } else if (j > 0 && (i === 0 || dp[i][j-1] >= dp[i-1][j])) {
+                    result2.unshift({ c: chars2[j-1], t: 'add' });
+                    j--;
+                } else if (i > 0) {
+                    result1.unshift({ c: chars1[i-1], t: 'del' });
+                    i--;
+                }
+            }
+            
+            return { result1, result2 };
+        }
+
+        // Build HTML with character highlighting
+        function buildCharDiffHtml(result, side) {
+            let html = '';
+            let inSpan = false;
+            let currentType = null;
+            
+            for (const item of result) {
+                const type = item.t;
+                const char = item.c;
+                
+                if (type === 'same') {
+                    if (inSpan) {
+                        html += '</span>';
+                        inSpan = false;
+                    }
+                    html += esc(char);
+                } else if ((side === 'left' && type === 'del') || (side === 'right' && type === 'add')) {
+                    const className = type === 'del' ? 'diff-del' : 'diff-add';
+                    if (!inSpan || currentType !== type) {
+                        if (inSpan) html += '</span>';
+                        html += `<span class="${className}">`;
+                        inSpan = true;
+                        currentType = type;
+                    }
+                    html += esc(char);
+                }
+            }
+            
+            if (inSpan) html += '</span>';
+            return html;
+        }
+
+        function diffLines(text1, text2) {
+            const lines1 = text1.split('\n');
+            const lines2 = text2.split('\n');
+            const maxLen = Math.max(lines1.length, lines2.length);
+            
+            const result1 = [];
+            const result2 = [];
+            let adds = 0, dels = 0;
+
+            for (let i = 0; i < maxLen; i++) {
+                const l1 = lines1[i] || '';
+                const l2 = lines2[i] || '';
+                
+                if (l1 === l2) {
+                    result1.push({ text: l1, type: 'same' });
+                    result2.push({ text: l2, type: 'same' });
+                } else {
+                    // Character-level diff for this line
+                    const { result1: r1, result2: r2 } = diffChars(l1, l2);
+                    
+                    const html1 = buildCharDiffHtml(r1, 'left');
+                    const html2 = buildCharDiffHtml(r2, 'right');
+                    
+                    // Count additions and deletions
+                    const d = r1.filter(x => x.t === 'del').length;
+                    const a = r2.filter(x => x.t === 'add').length;
+                    
+                    result1.push({ html: html1, type: 'changed' });
+                    result2.push({ html: html2, type: 'changed' });
+                    adds += a;
+                    dels += d;
+                }
+            }
+
+            return { result1, result2, adds, dels, lineCount: maxLen };
+        }
+
+        // ========== RUN DIFF & UPDATE UI ==========
+        function runDiff() {
+            const text1 = getText('editor1');
+            const text2 = getText('editor2');
+
+            const { result1, result2, adds, dels, lineCount } = diffLines(text1, text2);
+
+            // Render diff HTML to display divs
+            renderDiffDisplay('display1', result1);
+            renderDiffDisplay('display2', result2);
+
+            // Update line numbers & highlight changed lines
+            updateLineNumbers('lines1', result1);
+            updateLineNumbers('lines2', result2);
+
+            // Update stats
+            $('stat-lines').textContent = lineCount;
+            $('stat-add').textContent = adds;
+            $('stat-del').textContent = dels;
+
+            // Draw gutter
+            drawGutter();
+        }
+
+        function renderDiffDisplay(displayId, results) {
+            const display = $(displayId);
+            let html = '';
+            
+            results.forEach(line => {
+                if (line.type === 'same') {
+                    html += `<div class="diff-line">${esc(line.text) || '&nbsp;'}</div>`;
+                } else {
+                    html += `<div class="diff-line">${line.html || '&nbsp;'}</div>`;
+                }
+            });
+            
+            display.innerHTML = html || '<div class="diff-line">&nbsp;</div>';
+        }
+
+        function updateLineNumbers(id, results) {
+            const container = $(id);
+            let html = '';
+            results.forEach((r, i) => {
+                const highlight = r.type === 'changed' ? ' highlight' : '';
+                html += `<div class="line-num${highlight}">${i + 1}</div>`;
+            });
+            container.innerHTML = html || '<div class="line-num">1</div>';
+        }
+
+        // ========== GUTTER CANVAS ==========
+        function drawGutter() {
+            const canvas = $('gutter');
+            const container = canvas.parentElement;
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = container.offsetWidth;
+            canvas.height = container.offsetHeight;
+
+            const text1 = getText('editor1');
+            const text2 = getText('editor2');
+            const lines1 = text1.split('\n');
+            const lines2 = text2.split('\n');
+            const maxLines = Math.max(lines1.length, lines2.length, 1);
+            
+            const lineHeight = canvas.height / maxLines;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const style = getComputedStyle(document.documentElement);
+            const addColor = style.getPropertyValue('--add-text').trim() || '#00e5c0';
+            const delColor = style.getPropertyValue('--del-text').trim() || '#f87171';
+
+            for (let i = 0; i < maxLines; i++) {
+                const l1 = lines1[i] || '';
+                const l2 = lines2[i] || '';
+                
+                if (l1 !== l2) {
+                    const y = i * lineHeight + lineHeight / 2;
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.bezierCurveTo(canvas.width * 0.3, y, canvas.width * 0.7, y, canvas.width, y);
+                    
+                    const hasLeft = l1.length > 0;
+                    const hasRight = l2.length > 0;
+                    
+                    if (!hasLeft && hasRight) {
+                        ctx.strokeStyle = addColor;
+                    } else if (hasLeft && !hasRight) {
+                        ctx.strokeStyle = delColor;
+                    } else {
+                        ctx.strokeStyle = style.getPropertyValue('--accent-2').trim() || '#8b5cf6';
+                    }
+                    
+                    ctx.lineWidth = 1.5;
+                    ctx.globalAlpha = 0.6;
+                    ctx.stroke();
+                }
+            }
+            ctx.globalAlpha = 1;
+        }
+
+        // ========== SYNC SCROLL ==========
+        function syncScroll(source, target) {
+            $(target).scrollTop = $(source).scrollTop;
+            $(target).scrollLeft = $(source).scrollLeft;
+        }
+
+        // Sync both editors
+        $('editor1').addEventListener('scroll', () => {
+            $('display1').style.transform = `translateY(-${$('editor1').scrollTop}px)`;
+            $('lines1').scrollTop = $('editor1').scrollTop;
+            $('editor2').scrollTop = $('editor1').scrollTop;
+            $('display2').style.transform = `translateY(-${$('editor1').scrollTop}px)`;
+            $('lines2').scrollTop = $('editor1').scrollTop;
+        });
+        
+        $('editor2').addEventListener('scroll', () => {
+            $('display2').style.transform = `translateY(-${$('editor2').scrollTop}px)`;
+            $('lines2').scrollTop = $('editor2').scrollTop;
+            $('editor1').scrollTop = $('editor2').scrollTop;
+            $('display1').style.transform = `translateY(-${$('editor2').scrollTop}px)`;
+            $('lines1').scrollTop = $('editor2').scrollTop;
+        });
+
+        // ========== LIVE DIFF ON INPUT ==========
+        ['editor1', 'editor2'].forEach(id => {
+            $(id).addEventListener('input', () => {
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(runDiff, 50);
+            });
+        });
+
+        // ========== BUTTONS ==========
+        $('paste1').addEventListener('click', async () => {
+            try {
+                const t = await navigator.clipboard.readText();
+                $('editor1').value = t;
+                runDiff();
+                toast('Pasted');
+            } catch { toast('Paste failed', 'err'); }
+        });
+
+        $('paste2').addEventListener('click', async () => {
+            try {
+                const t = await navigator.clipboard.readText();
+                $('editor2').value = t;
+                runDiff();
+                toast('Pasted');
+            } catch { toast('Paste failed', 'err'); }
+        });
+
+        $('clear1').addEventListener('click', () => { $('editor1').value = ''; runDiff(); });
+        $('clear2').addEventListener('click', () => { $('editor2').value = ''; runDiff(); });
+
+        $('swap-btn').addEventListener('click', () => {
+            const t1 = $('editor1').value;
+            const t2 = $('editor2').value;
+            $('editor1').value = t2;
+            $('editor2').value = t1;
+            runDiff();
+            toast('Swapped');
+        });
+
+        $('clear-btn').addEventListener('click', () => {
+            $('editor1').value = '';
+            $('editor2').value = '';
+            runDiff();
+            toast('Cleared');
+        });
+
+        // ========== UPLOAD ==========
+        $('upload-left').addEventListener('click', () => $('upload1').classList.add('active'));
+        $('upload-right').addEventListener('click', () => $('upload2').classList.add('active'));
+        $('close-upload1').addEventListener('click', () => $('upload1').classList.remove('active'));
+        $('close-upload2').addEventListener('click', () => $('upload2').classList.remove('active'));
+
+        [1, 2].forEach(n => {
+            const drop = $(`drop${n}`), input = $(`file${n}`);
+            
+            drop.addEventListener('click', () => input.click());
+            drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('dragover'); });
+            drop.addEventListener('dragleave', () => drop.classList.remove('dragover'));
+            drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('dragover'); processUpload(e.dataTransfer.files[0], n); });
+            input.addEventListener('change', e => processUpload(e.target.files[0], n));
+        });
+
+        async function processUpload(file, n) {
+            if (!file) return;
+            
+            const key = $('api-key').value.trim();
+            if (!key) { toast('API key required', 'err'); return; }
+
+            $('loading').classList.add('active');
+            $('loading-text').textContent = `Extracting text from ${file.name}...`;
+
+            try {
+                let images = [], mime = file.type;
+                
+                if (file.type === 'application/pdf') {
+                    const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        const page = await pdf.getPage(i);
+                        const vp = page.getViewport({ scale: 2 });
+                        const canvas = document.createElement('canvas');
+                        canvas.width = vp.width;
+                        canvas.height = vp.height;
+                        await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+                        images.push(canvas.toDataURL('image/png').split(',')[1]);
+                    }
+                    mime = 'image/png';
+                } else {
+                    images = [await new Promise((res, rej) => {
+                        const r = new FileReader();
+                        r.onload = () => res(r.result.split(',')[1]);
+                        r.onerror = rej;
+                        r.readAsDataURL(file);
+                    })];
+                }
+
+                const texts = [];
+                for (const img of images) {
+                    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+                        body: JSON.stringify({
+                            model: 'gpt-4o',
+                            messages: [{
+                                role: 'user',
+                                content: [
+                                    { type: 'text', text: 'Extract ALL text exactly as written. Preserve line breaks. Output ONLY the text.' },
+                                    { type: 'image_url', image_url: { url: `data:${mime};base64,${img}`, detail: 'high' } }
+                                ]
+                            }],
+                            max_tokens: 4096
+                        })
+                    });
+
+                    if (!res.ok) throw new Error((await res.json()).error?.message || 'API error');
+                    texts.push((await res.json()).choices[0].message.content);
+                }
+
+                $(`editor${n}`).value = texts.join('\n\n--- Page Break ---\n\n');
+                $(`upload${n}`).classList.remove('active');
+                runDiff();
+                toast('Text extracted!');
+            } catch (e) {
+                toast(e.message, 'err');
+            } finally {
+                $('loading').classList.remove('active');
+            }
+        }
+
+        // ========== INIT ==========
+        window.addEventListener('resize', drawGutter);
+        runDiff();
+        console.log('DocCompare v3 - Live diff ready!');
+    </script>
+</body>
+</html>
