@@ -215,14 +215,19 @@
         .tool-btn.primary:hover { opacity: 0.9; }
 
         .api-input {
-            padding: 0.4rem 0.6rem;
+            padding: 0.4rem 0.75rem;
             background: var(--bg-editor);
             border: 1px solid var(--border);
             border-radius: 6px;
             color: var(--text);
             font-family: 'IBM Plex Mono', monospace;
-            font-size: 0.75rem;
-            width: 180px;
+            font-size: 0.8rem;
+            width: 280px;
+        }
+        
+        .api-input::placeholder {
+            color: var(--text-dim);
+            opacity: 0.7;
         }
 
         .api-input:focus { outline: none; border-color: var(--accent-1); }
@@ -557,8 +562,9 @@
         <div class="toolbar-sep"></div>
         <div class="toolbar-group">
             <span style="font-size: 0.8rem; color: var(--text-dim);">🔑</span>
-            <input type="password" class="api-input" id="api-key" placeholder="OpenAI API Key">
-            <span class="status ok" id="api-status">Ready</span>
+            <input type="password" class="api-input" id="api-key" placeholder="Paste your OpenAI API key here...">
+            <button class="tool-btn" id="toggle-key" title="Show/Hide key">👁️</button>
+            <span class="status" id="api-status">Enter key</span>
         </div>
         <div class="toolbar-sep"></div>
         <div class="toolbar-group">
@@ -1064,6 +1070,38 @@
                 $('loading').classList.remove('active');
             }
         }
+
+        // ========== API KEY ==========
+        $('api-key').addEventListener('input', () => {
+            const key = $('api-key').value.trim();
+            const status = $('api-status');
+            
+            if (!key) {
+                status.className = 'status';
+                status.textContent = 'Enter key';
+            } else if (key.startsWith('sk-')) {
+                status.className = 'status ok';
+                status.textContent = '✓ Valid';
+            } else {
+                status.className = 'status err';
+                status.textContent = '✕ Invalid';
+            }
+        });
+
+        // Toggle API key visibility
+        $('toggle-key').addEventListener('click', () => {
+            const input = $('api-key');
+            const btn = $('toggle-key');
+            if (input.type === 'password') {
+                input.type = 'text';
+                btn.textContent = '🔒';
+                btn.title = 'Hide key';
+            } else {
+                input.type = 'password';
+                btn.textContent = '👁️';
+                btn.title = 'Show key';
+            }
+        });
 
         // ========== INIT ==========
         window.addEventListener('resize', drawGutter);
